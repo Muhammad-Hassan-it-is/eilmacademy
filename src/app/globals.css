@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7f5ef;
+  --foreground: #15362f;
 }
 
 @theme inline {
@@ -22,5 +22,29 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background: #d7b76c;
+  color: #15362f;
+}
+
+.paper-texture {
+  background-color: #f7f5ef;
+  background-image: radial-gradient(rgba(21, 54, 47, 0.06) 0.7px, transparent 0.7px);
+  background-size: 7px 7px;
+}
+
+.display-serif {
+  font-family: Georgia, "Times New Roman", serif;
+  letter-spacing: -0.045em;
+}
+
+.eyebrow {
+  letter-spacing: 0.16em;
 }

@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Enter a phone number or name" }, { status: 400 });
   }
 
-  const normalized = normalizePhone(query);
+  const normalized = normalizePhone(query) ?? (/^\+[1-9]\d{7,14}$/.test(query) ? query : null);
   let student: Registration | null = null;
 
   if (normalized) {

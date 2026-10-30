@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, CalendarDays, Search, Trophy, UserRound } from "lucide-react";
+import { ArrowLeft, CalendarDays, Search, Trophy, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 
@@ -12,18 +12,51 @@ type Results = {
   quizzes: { quiz_id: string; quiz_title: string; score: number | null; timestamp: string }[];
 };
 
+const countryCodes = [
+  { value: "+92", label: "🇵🇰 Pakistan (+92)" },
+  { value: "+966", label: "🇸🇦 Saudi Arabia (+966)" },
+  { value: "+971", label: "🇦🇪 UAE (+971)" },
+  { value: "+44", label: "🇬🇧 United Kingdom (+44)" },
+  { value: "+1", label: "🇺🇸 United States / Canada (+1)" },
+  { value: "+974", label: "🇶🇦 Qatar (+974)" },
+  { value: "+965", label: "🇰🇼 Kuwait (+965)" },
+  { value: "+968", label: "🇴🇲 Oman (+968)" },
+  { value: "+973", label: "🇧🇭 Bahrain (+973)" },
+  { value: "+91", label: "🇮🇳 India (+91)" },
+  { value: "+61", label: "🇦🇺 Australia (+61)" },
+  { value: "+60", label: "🇲🇾 Malaysia (+60)" },
+  { value: "+27", label: "🇿🇦 South Africa (+27)" },
+  { value: "+31", label: "🇳🇱 Netherlands (+31)" },
+  { value: "+34", label: "🇪🇸 Spain (+34)" },
+];
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
 }
 
 export default function StudentPage() {
   const [query, setQuery] = useState("");
+  const [countryCode, setCountryCode] = useState("+92");
   const [results, setResults] = useState<Results | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function findResults(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const enteredQuery = query.trim();
+    const isPhoneQuery = /^[+\d\s().-]+$/.test(enteredQuery);
+    let lookupQuery = enteredQuery;
+
+    if (isPhoneQuery && enteredQuery.startsWith("+")) {
+      lookupQuery = enteredQuery.replace(/[^+\d]/g, "");
+    } else if (isPhoneQuery && countryCode === "other") {
+      setError("Enter the full phone number beginning with + for Other / Custom.");
+      return;
+    } else if (isPhoneQuery) {
+      const nationalNumber = enteredQuery.replace(/\D/g, "").replace(/^0+/, "");
+      lookupQuery = `${countryCode}${nationalNumber}`;
+    }
+
     setLoading(true);
     setError("");
     setResults(null);
@@ -31,7 +64,7 @@ export default function StudentPage() {
       const response = await fetch("/api/student/lookup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query: lookupQuery }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Results could not be loaded");
@@ -46,7 +79,7 @@ export default function StudentPage() {
   return (
     <main className="min-h-screen bg-[#f5f7fa] px-4 py-6 text-slate-950 sm:px-6 sm:py-10">
       <div className="mx-auto max-w-3xl">
-        <Link href="/" className="mb-10 inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-teal-700"><ArrowLeft size={16} /> Admin dashboard</Link>
+        <Link href="/admin" className="mb-10 inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-teal-700"><ArrowLeft size={16} /> Admin dashboard</Link>
         <header className="mb-8">
           <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-teal-700">Student portal</p>
           <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">Your quiz results</h1>
@@ -54,7 +87,18 @@ export default function StudentPage() {
         </header>
 
         <form onSubmit={findResults} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_8px_30px_rgba(15,23,42,0.05)] sm:flex sm:items-center sm:gap-3 sm:p-4">
-          <div className="relative flex-1"><Search size={18} className="absolute left-3 top-3 text-slate-400" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Enter your phone number (e.g. 03001234567) or registered name" className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-4 focus:ring-teal-100" /></div>
+          <div className="flex min-w-0 flex-1 rounded-xl border border-slate-200 bg-[#fbfaf6] transition focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-100">
+            <select aria-label="Country calling code" value={countryCode} onChange={(event) => setCountryCode(event.target.value)} className="w-[138px] shrink-0 rounded-l-xl border-r border-slate-200 bg-transparent px-2 py-3 text-xs font-semibold text-slate-700 outline-none sm:w-[190px] sm:px-3 sm:text-sm">
+              {countryCodes.map((country) => <option key={country.value} value={country.value}>{country.label}</option>)}
+              <option disabled>──────────</option>
+              <option value="other">Other / Custom</option>
+            </select>
+            <div className="relative min-w-0 flex-1">
+              <Search size={17} className="absolute left-3 top-3.5 text-slate-400" />
+              <input type="tel" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Phone number or registered name" aria-label="Phone number or registered name" className="w-full min-w-0 rounded-r-xl bg-transparent py-3 pl-9 pr-9 text-sm text-slate-900 outline-none placeholder:text-slate-400" />
+              {query && <button type="button" onClick={() => setQuery("")} aria-label="Clear search" title="Clear search" className="absolute right-2 top-2 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"><X size={15} /></button>}
+            </div>
+          </div>
           <button type="submit" disabled={loading} className="mt-3 w-full rounded-xl bg-teal-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-teal-700 disabled:cursor-wait disabled:opacity-60 sm:mt-0 sm:w-auto">{loading ? "Loading..." : "View Results"}</button>
         </form>
 

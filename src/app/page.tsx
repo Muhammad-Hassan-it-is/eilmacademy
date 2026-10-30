@@ -1,252 +1,87 @@
 "use client";
 
-import {
-  Activity,
-  ArrowUpRight,
-  Check,
-  ClipboardList,
-  Clock3,
-  Database,
-  FileCheck2,
-  LayoutDashboard,
-  ListChecks,
-  Percent,
-  RefreshCw,
-  ScrollText,
-  Search,
-  ShieldCheck,
-  Smartphone,
-  UserRound,
-  X,
-} from "lucide-react";
-import { useEffect, useState } from "react";
-import type { ReactNode } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { ArrowDownRight, ArrowUpRight, Compass, MessageCircle, Menu as MenuIcon, X } from "lucide-react";
+import { type FormEvent, type ReactNode, useState } from "react";
 
-type Tab = "overview" | "queue" | "submissions" | "audit";
-type MatchStatus =
-  | "matched"
-  | "missing_phone"
-  | "invalid_phone"
-  | "not_registered"
-  | "duplicate_registration"
-  | "review_required"
-  | "ignored_test";
-
-interface Stats {
-  total_registered: number;
-  total_submissions: number;
-  matched_submissions: number;
-  pending_review: number;
-  pending_queue_updates: number;
-}
-
-interface QueueItem {
-  id: number;
-  quiz_id: string;
-  cell: string;
-  new_phone: string;
-  student_id: string;
-  reason: string | null;
-  quizzes?: { title: string } | { title: string }[] | null;
-  registrations?: { name: string } | { name: string }[] | null;
-}
-
-interface SubmissionItem {
-  id: string;
-  timestamp: string;
-  typed_name: string;
-  score: number | null;
-  match_status: MatchStatus;
-  matched_student_id: string | null;
-}
-
-interface AuditItem {
-  id: string;
-  timestamp: string;
-  quiz_title: string;
-  cell: string;
-  old_value: string | null;
-  new_value: string;
-  result: string;
-}
-
-const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
-  { id: "overview", label: "Overview", icon: LayoutDashboard },
-  { id: "queue", label: "Phone Update Queue", icon: ListChecks },
-  { id: "submissions", label: "Submissions", icon: ClipboardList },
-  { id: "audit", label: "Audit Log", icon: ScrollText },
+const programs = [
+  { number: "01", title: "Fehm e Quran Course", tag: "Online", description: "Build a deeper understanding of the Qur’an through guided study of its meanings and message. Reflect on its teachings and their relevance to everyday life." },
+  { number: "02", title: "Dars e Nizami", tag: "Onsite", description: "Pursue a structured study of the traditional Islamic sciences under the guidance of qualified scholars, with an emphasis on understanding, discipline, and Islamic character." },
+  { number: "03", title: "2-Year Ilm e Deen Course", tag: "Onsite · 2 Years", description: "Strengthen your foundation in Islamic knowledge through a two-year program focused on faith, worship, and applying Islamic teachings in daily life." },
 ];
 
-const statusLabels: Record<string, string> = {
-  matched: "Matched",
-  missing_phone: "Missing phone",
-  invalid_phone: "Invalid phone",
-  not_registered: "Not registered",
-  duplicate_registration: "Duplicate",
-  review_required: "Review required",
-  ignored_test: "Ignored test",
-};
-
-function relationValue<T>(relation: T | T[] | null | undefined): T | null {
-  return Array.isArray(relation) ? relation[0] ?? null : relation ?? null;
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
-
-function statusClass(status: string) {
-  if (status === "matched") return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  if (status === "missing_phone") return "border-amber-200 bg-amber-50 text-amber-700";
-  if (status === "review_required") return "border-rose-200 bg-rose-50 text-rose-700";
-  return "border-slate-200 bg-slate-50 text-slate-600";
-}
-
-function EmptyState({ label }: { label: string }) {
-  return (
-    <div className="flex min-h-48 flex-col items-center justify-center gap-2 px-6 text-center">
-      <div className="rounded-full bg-slate-100 p-3 text-slate-400"><Database size={19} /></div>
-      <p className="text-sm font-medium text-slate-600">{label}</p>
-      <p className="text-xs text-slate-400">New records will appear here automatically.</p>
-    </div>
-  );
-}
+const courseOptions = ["Fehm e Quran Course", "Dars e Nizami", "2-Year Ilm e Deen Course", "Not sure yet"];
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<Tab>("overview");
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [queue, setQueue] = useState<QueueItem[]>([]);
-  const [submissions, setSubmissions] = useState<SubmissionItem[]>([]);
-  const [audit, setAudit] = useState<AuditItem[]>([]);
-  const [submissionSearch, setSubmissionSearch] = useState("");
-  const [submissionFilter, setSubmissionFilter] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [actionId, setActionId] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState("Not sure yet");
 
-  async function loadDashboard() {
-    setLoading(true);
-    setError(null);
-    try {
-      const responses = await Promise.all([
-        fetch("/api/dashboard/stats"),
-        fetch("/api/queue"),
-        fetch("/api/submissions?page=1&limit=8"),
-        fetch("/api/audit"),
-      ]);
-      if (!responses.every((response) => response.ok)) throw new Error("Dashboard data could not be loaded");
-      const [statsData, queueData, submissionsData, auditData] = await Promise.all(responses.map((response) => response.json()));
-      setStats(statsData);
-      setQueue(queueData.items ?? []);
-      setSubmissions(submissionsData.items ?? []);
-      setAudit(auditData.items ?? []);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Unable to load dashboard");
-    } finally {
-      setLoading(false);
-    }
+  function chooseCourse(course: string) {
+    setSelectedCourse(course);
+    document.getElementById("admission-enquiry")?.scrollIntoView({ behavior: "smooth" });
   }
-
-  useEffect(() => {
-    const loadTimer = window.setTimeout(() => {
-      void loadDashboard();
-    }, 0);
-
-    return () => window.clearTimeout(loadTimer);
-  }, []);
-
-  async function decideQueueItem(id: number, status: "approved" | "rejected") {
-    setActionId(id);
-    setError(null);
-    try {
-      const response = await fetch("/api/queue", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, status }),
-      });
-      if (!response.ok) throw new Error("Queue update failed");
-      setQueue((items) => items.filter((item) => item.id !== id));
-      setStats((current) => current ? { ...current, pending_queue_updates: Math.max(0, current.pending_queue_updates - 1) } : current);
-    } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : "Queue update failed");
-    } finally {
-      setActionId(null);
-    }
-  }
-
-  const matchRate = stats && stats.total_submissions > 0 ? Math.round((stats.matched_submissions / stats.total_submissions) * 100) : 0;
-  const normalizedSearch = submissionSearch.trim().toLowerCase();
-  const filteredSubmissions = submissions.filter((submission) => {
-    const matchesStatus = !submissionFilter || submission.match_status === submissionFilter;
-    const matchesSearch = !normalizedSearch || submission.typed_name.toLowerCase().includes(normalizedSearch) || submission.matched_student_id?.toLowerCase().includes(normalizedSearch);
-    return matchesStatus && matchesSearch;
-  });
 
   return (
-    <main className="min-h-screen bg-[#f5f7fa] text-slate-950">
-      <div className="mx-auto max-w-[1440px] px-5 py-5 sm:px-8 lg:px-10 lg:py-8">
-        <header className="mb-8 flex flex-col gap-5 border-b border-slate-200 pb-7 sm:flex-row sm:items-end sm:justify-between">
+    <main className="paper-texture min-h-screen overflow-hidden text-[#15362f]">
+      <Navbar menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
+      <section className="relative border-b border-[#15362f]/15 px-5 pb-16 pt-16 sm:px-8 sm:pb-24 sm:pt-24 lg:px-12 lg:pt-28">
+        <div className="mx-auto grid max-w-7xl items-start gap-14 lg:grid-cols-[1.15fr_0.85fr] lg:gap-20">
           <div>
-            <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-teal-700"><span className="h-2 w-2 rounded-full bg-teal-500 shadow-[0_0_0_4px_rgba(20,184,166,0.12)]" />Operations console</div>
-            <h1 className="text-3xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-4xl">Student &amp; Quiz Admin Hub</h1>
-            <p className="mt-2 text-sm text-slate-500">A clear view of registration, matching, and phone update work.</p>
+            <p className="eyebrow mb-7 text-[10px] font-bold uppercase text-[#9a752c] sm:text-xs">Authentic Knowledge <span className="mx-2 text-[#9a752c]/50">•</span> Structured Learning <span className="mx-2 text-[#9a752c]/50">•</span> Spiritual Growth</p>
+            <h1 className="display-serif max-w-4xl text-5xl leading-[0.98] text-[#15362f] sm:text-7xl lg:text-[6.25rem]">Understand Your Faith. <span className="text-[#9a752c]">Enrich</span> Your Life.</h1>
+            <p className="mt-8 max-w-2xl text-base leading-7 text-[#15362f]/70 sm:text-lg sm:leading-8">Learn the Qur’an and deepen your understanding of Islam through structured programs guided by qualified scholars. Explore online and onsite learning that connects knowledge with worship, character, and everyday life.</p>
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row"><a href="#courses" className="inline-flex items-center justify-center gap-2 bg-[#15362f] px-5 py-3.5 text-sm font-bold text-[#f7f5ef] transition hover:bg-[#245247]">Explore Courses <ArrowDownRight size={16} /></a><Link href="/student" className="inline-flex items-center justify-center gap-2 border border-[#15362f]/30 px-5 py-3.5 text-sm font-bold transition hover:border-[#15362f] hover:bg-white/50">Student Portal <ArrowUpRight size={16} /></Link></div>
+            <p className="mt-7 flex items-center gap-2 text-xs font-medium text-[#15362f]/55"><span className="h-1.5 w-1.5 rounded-full bg-[#9a752c]" />Online Qur’an learning <span className="text-[#15362f]/25">•</span> Onsite Islamic studies in Islamabad</p>
           </div>
-          <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto"><a href="/student" className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition text-slate-700">Open Student Portal →</a><div className="flex items-center gap-3 rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-medium text-emerald-700 shadow-sm"><span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" /></span>System operational<button type="button" onClick={() => void loadDashboard()} className="ml-1 rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" aria-label="Refresh dashboard"><RefreshCw size={14} className={loading ? "animate-spin" : ""} /></button></div></div>
-        </header>
+          <div className="grid gap-3 pt-1 sm:grid-cols-2 lg:pt-14"><div className="min-h-[245px] border border-[#15362f]/20 bg-[#e8e8d9]/70 p-5"><div className="mb-14 flex items-center justify-between text-[#9a752c]"><span className="text-xs font-bold">01</span><ArrowUpRight size={17} /></div><p className="eyebrow text-[10px] font-bold uppercase text-[#15362f]/55">Online Program</p><h2 className="display-serif mt-2 text-2xl">Fehm e Quran Course</h2></div><div className="min-h-[245px] border border-[#9a752c]/40 bg-[#15362f] p-5 text-[#f7f5ef]"><div className="mb-14 flex items-center justify-between text-[#d7b76c]"><span className="text-xs font-bold">02</span><Compass size={17} /></div><p className="eyebrow text-[10px] font-bold uppercase text-[#d7b76c]/75">Onsite Programs</p><h2 className="display-serif mt-2 text-2xl">Islamabad</h2></div></div>
+        </div>
+      </section>
 
-        {error && <div className="mb-5 flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"><span>{error}</span><button type="button" onClick={() => setError(null)} aria-label="Dismiss error"><X size={16} /></button></div>}
-
-        <nav className="mb-7 flex gap-1 overflow-x-auto border-b border-slate-200" aria-label="Dashboard sections">
-          {tabs.map(({ id, label, icon: Icon }) => <button key={id} type="button" onClick={() => setActiveTab(id)} className={`flex shrink-0 items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition ${activeTab === id ? "border-teal-600 text-teal-700" : "border-transparent text-slate-500 hover:text-slate-900"}`}><Icon size={16} />{label}{id === "queue" && Boolean(stats?.pending_queue_updates) && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] text-amber-700">{stats?.pending_queue_updates}</span>}</button>)}
-        </nav>
-
-        {activeTab === "overview" && <>
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <MetricCard label="Total registered students" value={stats?.total_registered} icon={UserRound} accent="teal" detail="Across all active registrations" />
-            <MetricCard label="Quiz submissions" value={stats?.total_submissions} icon={FileCheck2} accent="blue" detail="Responses received to date" />
-            <MetricCard label="Match rate" value={`${matchRate}%`} icon={Percent} accent="violet" detail={`${stats?.matched_submissions ?? 0} submissions matched`} />
-            <MetricCard label="Pending phone writes" value={stats?.pending_queue_updates} icon={Smartphone} accent="amber" detail="Waiting for an admin decision" />
-          </section>
-          <section className="mt-7 grid gap-5 lg:grid-cols-[1.3fr_0.7fr]">
-            <Panel title="Recent activity" icon={Activity} action={<button type="button" onClick={() => setActiveTab("submissions")} className="flex items-center gap-1 text-xs font-semibold text-teal-700 hover:text-teal-900">View submissions <ArrowUpRight size={14} /></button>}>
-              {submissions.length ? <div className="divide-y divide-slate-100">{submissions.slice(0, 5).map((submission) => <div key={submission.id} className="flex items-center justify-between gap-4 px-5 py-4"><div className="flex min-w-0 items-center gap-3"><div className="rounded-lg bg-slate-100 p-2 text-slate-500"><ClipboardList size={16} /></div><div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-800">{submission.typed_name || "Unnamed response"}</p><p className="mt-0.5 text-xs text-slate-400">{formatDate(submission.timestamp)}</p></div></div><StatusBadge status={submission.match_status} /></div>)}</div> : <EmptyState label="No recent submissions" />}
-            </Panel>
-            <Panel title="System health" icon={ShieldCheck}>
-              <div className="space-y-4 p-5"><HealthRow label="Supabase connection" status="Operational" /><HealthRow label="Registration matching" status="Ready" /><HealthRow label="Phone write queue" status={`${stats?.pending_queue_updates ?? 0} pending`} warning={Boolean(stats?.pending_queue_updates)} /><div className="mt-5 border-t border-slate-100 pt-4 text-xs text-slate-400">Last checked just now <span className="float-right inline-flex items-center gap-1"><Clock3 size={12} /> Live</span></div></div>
-            </Panel>
-          </section>
-        </>}
-
-        {activeTab === "queue" && <Panel title="Phone update queue" icon={Smartphone} subtitle="Review proposed registration changes before they are written.">
-          {queue.length ? <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left"><thead><tr className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-400"><th className="px-5 py-3">Quiz</th><th className="px-5 py-3">Row / cell</th><th className="px-5 py-3">Proposed phone</th><th className="px-5 py-3">Student</th><th className="px-5 py-3">Reason</th><th className="px-5 py-3 text-right">Decision</th></tr></thead><tbody className="divide-y divide-slate-100">{queue.map((item) => { const quiz = relationValue(item.quizzes); const registration = relationValue(item.registrations); return <tr key={item.id} className="hover:bg-slate-50/70"><td className="px-5 py-4"><p className="font-semibold text-slate-800">{quiz?.title ?? "Unknown quiz"}</p><p className="mt-1 text-xs text-slate-400">#{item.quiz_id}</p></td><td className="px-5 py-4"><span className="font-mono text-sm font-semibold text-slate-700">{item.cell}</span></td><td className="px-5 py-4 font-mono text-sm text-teal-700">{item.new_phone}</td><td className="px-5 py-4"><p className="font-semibold text-slate-800">{registration?.name ?? "Unknown student"}</p><p className="mt-1 text-xs text-slate-400">{item.student_id}</p></td><td className="max-w-[220px] px-5 py-4 text-sm text-slate-500">{item.reason ?? "No reason provided"}</td><td className="px-5 py-4"><div className="flex justify-end gap-2"><button type="button" disabled={actionId === item.id} onClick={() => void decideQueueItem(item.id, "approved")} className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-teal-700 disabled:opacity-50"><Check size={14} />Approve</button><button type="button" disabled={actionId === item.id} onClick={() => void decideQueueItem(item.id, "rejected")} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-50"><X size={14} />Reject</button></div></td></tr>; })}</tbody></table></div> : <EmptyState label="The phone update queue is clear" />}
-        </Panel>}
-
-        {activeTab === "submissions" && <Panel title="Quiz submissions" icon={ClipboardList} subtitle="Review response matching outcomes."><div className="flex flex-col gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between"><div className="relative max-w-xs flex-1"><Search size={16} className="absolute left-3 top-2.5 text-slate-400" /><input aria-label="Search submissions" value={submissionSearch} onChange={(event) => setSubmissionSearch(event.target.value)} placeholder="Search responses" className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100" /></div><select value={submissionFilter} onChange={(event) => setSubmissionFilter(event.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 outline-none focus:border-teal-500"><option value="">All statuses</option><option value="matched">Matched</option><option value="missing_phone">Missing phone</option><option value="review_required">Review required</option><option value="not_registered">Not registered</option></select></div>{filteredSubmissions.length ? <div className="divide-y divide-slate-100">{filteredSubmissions.map((submission) => <div key={submission.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><div className="rounded-lg bg-slate-100 p-2 text-slate-500"><UserRound size={16} /></div><div><p className="text-sm font-semibold text-slate-800">{submission.typed_name || "Unnamed response"}</p><p className="mt-1 text-xs text-slate-400">{formatDate(submission.timestamp)} · Score {submission.score ?? "-"}</p></div></div><div className="flex items-center gap-3"><span className="text-xs text-slate-400">{submission.matched_student_id ?? "No student match"}</span><StatusBadge status={submission.match_status} /></div></div>)}</div> : <EmptyState label="No submissions match this filter" />}</Panel>}
-
-        {activeTab === "audit" && <Panel title="Audit log" icon={ScrollText} subtitle="A read-only record of phone update decisions and results.">{audit.length ? <div className="divide-y divide-slate-100">{audit.map((entry) => <div key={entry.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"><div><div className="flex items-center gap-2"><span className={`rounded-full px-2 py-1 text-[11px] font-bold uppercase ${entry.result === "success" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>{entry.result}</span><span className="font-mono text-xs text-slate-400">{entry.cell}</span></div><p className="mt-2 text-sm font-semibold text-slate-800">{entry.quiz_title}</p><p className="mt-1 text-xs text-slate-500">{entry.old_value ?? "Empty"} <ArrowUpRight className="mx-1 inline" size={12} /> {entry.new_value}</p></div><time className="text-xs text-slate-400">{formatDate(entry.timestamp)}</time></div>)}</div> : <EmptyState label="No audit events yet" />}</Panel>}
-      </div>
+      <section id="courses" className="scroll-mt-24 px-5 py-20 sm:px-8 sm:py-28 lg:px-12"><div className="mx-auto max-w-7xl"><SectionIntro eyebrow="Our Programs" title="A Structured Path to Islamic Learning" intro="Explore three focused programs designed to strengthen your understanding of the Qur’an and Islamic teachings." /><div className="mt-12 grid gap-4 lg:grid-cols-3">{programs.map((program) => <ProgramCard key={program.title} {...program} onEnquire={() => chooseCourse(program.title)} />)}</div></div></section>
+      <section id="about" className="scroll-mt-24 border-y border-[#15362f]/15 bg-[#e8e8d9]/55 px-5 py-20 sm:px-8 sm:py-28 lg:px-12"><div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-24"><div><p className="eyebrow text-[10px] font-bold uppercase text-[#9a752c]">About Eilm Academy</p><h2 className="display-serif mt-5 text-4xl leading-tight sm:text-6xl">Knowledge That Guides Understanding and Practice</h2><a href="#contact" className="mt-8 inline-flex items-center gap-2 border-b border-[#9a752c] pb-2 text-sm font-bold text-[#15362f]">About Eilm Academy <ArrowUpRight size={15} /></a></div><div className="text-base leading-8 text-[#15362f]/70"><p>Eilm Academy is dedicated to making authentic Islamic education accessible through structured online and onsite programs. Rooted in the Qur’an and Sunnah, our approach brings together learning, reflection, and practical application.</p><p className="mt-5">Our purpose goes beyond sharing information. We aim to nurture a deeper understanding of faith, commitment to the Sunnah, and good character in everyday life.</p><div className="mt-10 border-t border-[#15362f]/20 pt-6"><p className="eyebrow text-[10px] font-bold uppercase text-[#9a752c]">Our Approach</p><div className="mt-6 grid gap-5 sm:grid-cols-3">{["Learning that is grounded in the Qur’an and Sunnah", "Reflection on what is studied and its message", "Practical application in everyday life"].map((item, index) => <div key={item}><span className="text-sm font-bold text-[#9a752c]">0{index + 1}</span><p className="mt-2 text-sm font-semibold leading-6 text-[#15362f]">{item}</p></div>)}</div></div></div></div></section>
+      <section className="px-5 py-20 sm:px-8 sm:py-28 lg:px-12"><div className="mx-auto max-w-7xl"><div className="max-w-2xl"><p className="eyebrow text-[10px] font-bold uppercase text-[#9a752c]">The Eilm Difference</p><h2 className="display-serif mt-5 text-4xl sm:text-6xl">Why Eilm Academy</h2><p className="mt-5 text-base text-[#15362f]/65">Learn with Clarity, Purpose, and Guidance</p></div><div className="mt-12 grid border-t border-[#15362f]/20 sm:grid-cols-2 lg:grid-cols-4">{[["Rooted in Qur’an & Sunnah", "An approach to learning grounded in the primary sources of Islam."], ["Qualified Scholarly Guidance", "Study with teachers who help explain Islamic knowledge with care and clarity."], ["Structured Learning", "Follow an organised path that supports steady progress and deeper understanding."], ["Knowledge for Daily Life", "Connect your studies with worship, personal conduct, and spiritual growth."]].map(([title, text], index) => <article key={title} className="border-b border-[#15362f]/20 px-0 py-7 sm:px-6 sm:first:pl-0 lg:border-b-0 lg:border-l lg:first:border-l-0"><span className="text-sm font-bold text-[#9a752c]">0{index + 1}</span><h3 className="display-serif mt-8 text-2xl leading-tight">{title}</h3><p className="mt-4 text-sm leading-6 text-[#15362f]/65">{text}</p></article>)}</div></div></section>
+      <section className="border-y border-[#15362f]/15 bg-[#15362f] px-5 py-20 text-[#f7f5ef] sm:px-8 sm:py-28 lg:px-12"><div className="mx-auto grid max-w-7xl items-end gap-12 lg:grid-cols-[1fr_0.8fr]"><div><p className="eyebrow text-[10px] font-bold uppercase text-[#d7b76c]">Our Learning Environment</p><h2 className="display-serif mt-5 max-w-2xl text-5xl leading-none sm:text-7xl">Join Us in Islamabad</h2><p className="mt-7 max-w-xl text-base leading-7 text-[#f7f5ef]/65">Attend our onsite Dars e Nizami and 2-Year Ilm e Deen programs in an environment dedicated to Islamic learning and spiritual development.</p></div><div className="border border-[#d7b76c]/45 p-6"><div className="flex items-start justify-between gap-5"><div><p className="eyebrow text-[10px] font-bold uppercase text-[#d7b76c]">Location</p><h3 className="display-serif mt-4 text-3xl">Jamia Masjid Al Mahmoud</h3><p className="mt-3 text-sm leading-6 text-[#f7f5ef]/65">Khanqah Darul Eman Wal Taqwa, Islamabad</p></div><Compass className="shrink-0 text-[#d7b76c]" size={22} /></div><div className="mt-8 flex flex-col gap-3 sm:flex-row"><a href="https://www.google.com/maps/search/?api=1&query=Jamia+Masjid+Al+Mahmoud+Islamabad" target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 bg-[#d7b76c] px-4 py-3 text-sm font-bold text-[#15362f] hover:bg-[#e6cc91]">Open in Maps <ArrowUpRight size={15} /></a><button type="button" onClick={() => chooseCourse("Not sure yet")} className="inline-flex items-center justify-center gap-2 border border-[#f7f5ef]/30 px-4 py-3 text-sm font-bold hover:border-[#f7f5ef]">Enquire About Onsite Programs</button></div></div></div></section>
+      <section id="admission-enquiry" className="scroll-mt-24 px-5 py-20 sm:px-8 sm:py-28 lg:px-12"><div className="mx-auto max-w-7xl"><div className="grid gap-14 lg:grid-cols-[0.8fr_1.2fr] lg:gap-24"><div><p className="eyebrow text-[10px] font-bold uppercase text-[#9a752c]">Admissions</p><h2 className="display-serif mt-5 text-5xl leading-none sm:text-7xl">Take the Next Step in Your Islamic Learning</h2><p className="mt-7 text-base leading-7 text-[#15362f]/65">Interested in studying with Eilm Academy? Contact us to learn more about course availability, admission requirements, and how to apply.</p><div className="mt-10 border-t border-[#15362f]/20 pt-6 text-sm"><a href="tel:+923155090055" className="flex items-center justify-between border-b border-[#15362f]/15 py-4 font-bold hover:text-[#9a752c]">+92 315 5090055 <span className="text-xs font-normal text-[#15362f]/50">Call</span></a><a href="https://wa.me/923155090055" target="_blank" rel="noreferrer" className="flex items-center justify-between border-b border-[#15362f]/15 py-4 font-bold hover:text-[#9a752c]">WhatsApp <MessageCircle size={16} /></a><a href="mailto:Eilmacademy@gmail.com" className="flex items-center justify-between py-4 font-bold hover:text-[#9a752c]">Eilmacademy@gmail.com <span className="text-xs font-normal text-[#15362f]/50">Email</span></a></div></div><EnquiryForm selectedCourse={selectedCourse} setSelectedCourse={setSelectedCourse} /></div></div></section>
+      <Footer />
     </main>
   );
 }
 
-function MetricCard({ label, value, icon: Icon, accent, detail }: { label: string; value: number | string | undefined; icon: typeof UserRound; accent: string; detail: string }) {
-  const colors: Record<string, string> = { teal: "bg-teal-50 text-teal-700", blue: "bg-blue-50 text-blue-700", violet: "bg-violet-50 text-violet-700", amber: "bg-amber-50 text-amber-700" };
-  return <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_4px_20px_rgba(15,23,42,0.03)]"><div className="flex items-start justify-between"><span className={`rounded-xl p-2.5 ${colors[accent]}`}><Icon size={19} /></span><ArrowUpRight size={16} className="text-slate-300" /></div><p className="mt-6 text-sm font-medium text-slate-500">{label}</p><p className="mt-1 text-3xl font-semibold tracking-[-0.04em] text-slate-950">{value ?? "-"}</p><p className="mt-2 text-xs text-slate-400">{detail}</p></div>;
+function Navbar({ menuOpen, setMenuOpen }: { menuOpen: boolean; setMenuOpen: (open: boolean) => void }) {
+  const links = [["Home", "#top"], ["About", "#about"], ["Courses", "#courses"], ["Donate", "#contact"], ["Contact", "#contact"]];
+  return <header id="top" className="sticky top-0 z-40 border-b border-[#15362f]/15 bg-[#f7f5ef]/95 backdrop-blur-md"><div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-3 sm:px-8 lg:px-12"><Link href="/" className="flex items-center gap-3"><Image src="/logo.png" alt="Eilm Academy" width={66} height={42} className="h-10 w-auto object-contain" priority /><span className="display-serif text-xl font-bold tracking-[-0.03em]">Eilm Academy</span></Link><nav className="hidden items-center gap-7 lg:flex">{links.map(([label, href]) => <a key={label} href={href} className="text-xs font-bold text-[#15362f]/65 transition hover:text-[#15362f]">{label}</a>)}</nav><div className="hidden items-center gap-2 lg:flex"><Link href="/student" className="px-4 py-2.5 text-xs font-bold text-[#15362f] hover:text-[#9a752c]">Student Portal</Link><a href="#admission-enquiry" className="bg-[#15362f] px-4 py-2.5 text-xs font-bold text-[#f7f5ef] hover:bg-[#245247]">Admission Enquiry</a></div><button type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"} className="p-2 lg:hidden">{menuOpen ? <X size={21} /> : <MenuIcon size={21} />}</button></div>{menuOpen && <nav className="border-t border-[#15362f]/10 px-5 py-5 lg:hidden">{links.map(([label, href]) => <a key={label} href={href} onClick={() => setMenuOpen(false)} className="block border-b border-[#15362f]/10 py-3 text-sm font-bold">{label}</a>)}<Link href="/student" onClick={() => setMenuOpen(false)} className="mt-5 block border border-[#15362f]/25 px-4 py-3 text-center text-sm font-bold">Student Portal</Link><a href="#admission-enquiry" onClick={() => setMenuOpen(false)} className="mt-2 block bg-[#15362f] px-4 py-3 text-center text-sm font-bold text-[#f7f5ef]">Admission Enquiry</a></nav>}</header>;
 }
 
-function Panel({ title, icon: Icon, subtitle, action, children }: { title: string; icon: typeof Activity; subtitle?: string; action?: ReactNode; children: ReactNode }) {
-  return <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_4px_20px_rgba(15,23,42,0.03)]"><div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-5"><div className="flex items-start gap-3"><div className="mt-0.5 rounded-lg bg-slate-100 p-2 text-slate-600"><Icon size={17} /></div><div><h2 className="text-sm font-bold text-slate-900">{title}</h2>{subtitle && <p className="mt-1 text-xs text-slate-400">{subtitle}</p>}</div></div>{action}</div>{children}</section>;
+function SectionIntro({ eyebrow, title, intro }: { eyebrow: string; title: string; intro: string }) {
+  return <div className="max-w-2xl"><p className="eyebrow text-[10px] font-bold uppercase text-[#9a752c]">{eyebrow}</p><h2 className="display-serif mt-5 text-5xl leading-none sm:text-6xl">{title}</h2><p className="mt-6 text-base leading-7 text-[#15362f]/65">{intro}</p></div>;
 }
 
-function HealthRow({ label, status, warning = false }: { label: string; status: string; warning?: boolean }) {
-  return <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-2 text-sm text-slate-600"><span className={`h-2 w-2 rounded-full ${warning ? "bg-amber-400" : "bg-emerald-400"}`} />{label}</span><span className={`text-xs font-semibold ${warning ? "text-amber-700" : "text-emerald-700"}`}>{status}</span></div>;
+function ProgramCard({ number, title, tag, description, onEnquire }: { number: string; title: string; tag: string; description: string; onEnquire: () => void }) {
+  return <article className="group flex min-h-[360px] flex-col border border-[#15362f]/20 bg-white/35 p-6 transition hover:-translate-y-1 hover:border-[#9a752c] sm:p-8"><div className="flex items-center justify-between"><span className="text-sm font-bold text-[#9a752c]">{number}</span><span className="border border-[#15362f]/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#15362f]/60">{tag}</span></div><h3 className="display-serif mt-16 text-3xl leading-tight">{title}</h3><p className="mt-5 text-sm leading-6 text-[#15362f]/65">{description}</p><button type="button" onClick={onEnquire} className="mt-auto flex items-center gap-2 pt-8 text-left text-xs font-bold text-[#15362f] hover:text-[#9a752c]">Enquire About This Course <ArrowUpRight size={15} /></button></article>;
 }
 
-function StatusBadge({ status }: { status: string }) {
-  return <span className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-bold ${statusClass(status)}`}>{statusLabels[status] ?? status}</span>;
+function EnquiryForm({ selectedCourse, setSelectedCourse }: { selectedCourse: string; setSelectedCourse: (course: string) => void }) {
+  const [notice, setNotice] = useState(false);
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const name = String(data.get("name") ?? "");
+    const contact = String(data.get("contact") ?? "");
+    const course = String(data.get("course") ?? "Not sure yet");
+    const message = String(data.get("message") ?? "");
+    const subject = encodeURIComponent(`Admission Enquiry — ${course}`);
+    const body = encodeURIComponent(`Name: ${name}\nPhone or Email: ${contact}\nCourse of Interest: ${course}\n\nMessage:\n${message}`);
+    window.location.href = `mailto:Eilmacademy@gmail.com?subject=${subject}&body=${body}`;
+    setNotice(true);
+  }
+  return <form onSubmit={submit} className="border-t border-[#15362f]/20 pt-6"><h3 className="display-serif text-3xl">Send us a short message</h3><div className="mt-7 grid gap-5 sm:grid-cols-2"><label className="text-xs font-bold">Name<input required name="name" className="mt-2 w-full border-b border-[#15362f]/30 bg-transparent px-0 py-3 text-sm font-normal outline-none focus:border-[#9a752c]" /></label><label className="text-xs font-bold">Phone or Email<input required name="contact" className="mt-2 w-full border-b border-[#15362f]/30 bg-transparent px-0 py-3 text-sm font-normal outline-none focus:border-[#9a752c]" /></label></div><label className="mt-6 block text-xs font-bold">Course of Interest<select name="course" value={selectedCourse} onChange={(event) => setSelectedCourse(event.target.value)} className="mt-2 w-full border-b border-[#15362f]/30 bg-transparent px-0 py-3 text-sm font-normal outline-none focus:border-[#9a752c]">{courseOptions.map((course) => <option key={course}>{course}</option>)}</select></label><label className="mt-6 block text-xs font-bold">Message<textarea name="message" rows={4} className="mt-2 w-full resize-none border-b border-[#15362f]/30 bg-transparent px-0 py-3 text-sm font-normal outline-none focus:border-[#9a752c]" /></label><button type="submit" className="mt-7 inline-flex items-center gap-2 bg-[#15362f] px-5 py-3.5 text-sm font-bold text-[#f7f5ef] hover:bg-[#245247]">Send Enquiry <ArrowUpRight size={16} /></button>{notice && <p role="status" className="mt-5 border-l-2 border-[#9a752c] pl-3 text-xs leading-5 text-[#15362f]/65">Submitting opens your email app with the details filled in, addressed to Eilmacademy@gmail.com. You can also call +92 315 5090055.</p>}</form>;
+}
+
+function Footer() {
+  return <footer id="contact" className="border-t border-[#15362f]/15 bg-[#e8e8d9]/55 px-5 pb-6 pt-16 sm:px-8 lg:px-12"><div className="mx-auto max-w-7xl"><div className="grid gap-12 lg:grid-cols-[1.3fr_0.7fr_0.9fr_1fr]"><div><div className="flex items-center gap-3"><Image src="/logo.png" alt="Eilm Academy" width={58} height={36} className="h-9 w-auto object-contain" /><span className="display-serif text-xl font-bold">Eilm Academy</span></div><p className="mt-6 max-w-xs text-sm leading-6 text-[#15362f]/65">Authentic Islamic learning rooted in the Qur’an and Sunnah, with online and onsite programs that nurture understanding, practice, and character.</p></div><FooterColumn title="Quick Links">{[["Home", "#top"], ["About", "#about"], ["Courses", "#courses"], ["Donate", "#contact"], ["Contact", "#contact"], ["Student Portal", "/student"]].map(([label, href]) => <a key={label} href={href} className="block text-sm text-[#15362f]/65 hover:text-[#9a752c]">{label}</a>)}</FooterColumn><FooterColumn title="Programs">{programs.map((program) => <a key={program.title} href="#courses" className="block text-sm text-[#15362f]/65 hover:text-[#9a752c]">{program.title}</a>)}</FooterColumn><FooterColumn title="Contact"><a href="tel:+923155090055" className="block text-sm text-[#15362f]/65 hover:text-[#9a752c]">+92 315 5090055</a><a href="mailto:Eilmacademy@gmail.com" className="block break-all text-sm text-[#15362f]/65 hover:text-[#9a752c]">Eilmacademy@gmail.com</a><p className="text-sm leading-6 text-[#15362f]/65">Jamia Masjid Al Mahmoud, Khanqah Darul Eman Wal Taqwa, Islamabad</p></FooterColumn></div><div className="mt-16 border-t border-[#15362f]/15 pt-5 text-xs text-[#15362f]/50">Copyright © 2026 Eilm Academy. All rights reserved.</div></div></footer>;
+}
+
+function FooterColumn({ title, children }: { title: string; children: ReactNode }) {
+  return <div><h3 className="eyebrow mb-5 text-[10px] font-bold uppercase text-[#9a752c]">{title}</h3><div className="space-y-3">{children}</div></div>;
 }
