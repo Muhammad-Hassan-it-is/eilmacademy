@@ -1,15 +1,21 @@
 "use client";
 
-import { ArrowLeft, CalendarDays, Search, Trophy, UserRound, X } from "lucide-react";
+import { ArrowLeft, Check, Clock3, ExternalLink, Search, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 
 type Results = {
   student: { student_id: string; name: string; phone: string | null; city: string | null };
   total_quizzes: number;
-  total_score: number;
   average_score: number;
-  quizzes: { quiz_id: string; quiz_title: string; score: number | null; timestamp: string }[];
+  quizzes: {
+    quiz_id: string;
+    quiz_title: string;
+    quiz_url: string | null;
+    max_marks: number | null;
+    score: number | null;
+    timestamp: string | null;
+  }[];
 };
 
 const countryCodes = [
@@ -29,10 +35,6 @@ const countryCodes = [
   { value: "+31", label: "🇳🇱 Netherlands (+31)" },
   { value: "+34", label: "🇪🇸 Spain (+34)" },
 ];
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
-}
 
 export default function StudentPage() {
   const [query, setQuery] = useState("");
@@ -77,13 +79,13 @@ export default function StudentPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f5f7fa] px-4 py-6 text-slate-950 sm:px-6 sm:py-10">
+    <main className="min-h-screen bg-[#f7f8f5] px-4 py-6 text-slate-950 sm:px-6 sm:py-10">
       <div className="mx-auto max-w-3xl">
-        <Link href="/admin" className="mb-10 inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-teal-700"><ArrowLeft size={16} /> Admin dashboard</Link>
+        <Link href="/" className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-emerald-800"><ArrowLeft size={16} /> Eilm Academy</Link>
         <header className="mb-8">
-          <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-teal-700">Student portal</p>
+          <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-emerald-800">Student portal</p>
           <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">Your quiz results</h1>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-slate-500">Search with the phone number or registered name used for your quiz submissions.</p>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-slate-600">View your quiz links, scores, and completion status. Search with the phone number or registered name used for your submissions.</p>
         </header>
 
         <form onSubmit={findResults} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_8px_30px_rgba(15,23,42,0.05)] sm:flex sm:items-center sm:gap-3 sm:p-4">
@@ -99,14 +101,76 @@ export default function StudentPage() {
               {query && <button type="button" onClick={() => setQuery("")} aria-label="Clear search" title="Clear search" className="absolute right-2 top-2 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"><X size={15} /></button>}
             </div>
           </div>
-          <button type="submit" disabled={loading} className="mt-3 w-full rounded-xl bg-teal-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-teal-700 disabled:cursor-wait disabled:opacity-60 sm:mt-0 sm:w-auto">{loading ? "Loading..." : "View Results"}</button>
+          <button type="submit" disabled={loading} className="mt-3 w-full rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-bold text-emerald-900 transition hover:bg-emerald-100 disabled:cursor-wait disabled:opacity-60 sm:mt-0 sm:w-auto">{loading ? "Loading..." : "View Results"}</button>
         </form>
 
         {error && <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800"><p className="font-semibold">No results found</p><p className="mt-1 text-amber-700">{error}. Check the spelling or phone number and try again.</p></div>}
 
         {results && <section className="mt-8 space-y-5">
-          <div className="rounded-2xl bg-slate-950 p-6 text-white shadow-[0_12px_30px_rgba(15,23,42,0.15)]"><div className="flex items-start justify-between gap-4"><div><p className="text-sm text-slate-400">Student</p><h2 className="mt-1 text-2xl font-semibold">{results.student.name}</h2><p className="mt-2 text-sm text-slate-400">{results.student.student_id}{results.student.city ? ` · ${results.student.city}` : ""}</p></div><div className="rounded-xl bg-teal-500/15 p-3 text-teal-300"><UserRound size={22} /></div></div><div className="mt-6 grid grid-cols-2 gap-4 border-t border-white/10 pt-5 sm:grid-cols-4"><Stat label="Registered number" value={results.student.phone ?? "Not available"} /><Stat label="Quizzes completed" value={String(results.total_quizzes)} /><Stat label="Total score" value={String(results.total_score)} /><Stat label="Average score" value={String(results.average_score)} /></div></div>
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white"><div className="border-b border-slate-100 px-5 py-4"><h2 className="font-semibold text-slate-900">Quiz scores</h2></div>{results.quizzes.length ? <div className="divide-y divide-slate-100">{results.quizzes.map((quiz) => <div key={`${quiz.quiz_id}-${quiz.timestamp}`} className="flex items-center justify-between gap-4 px-5 py-4"><div className="flex min-w-0 items-center gap-3"><div className="rounded-lg bg-teal-50 p-2 text-teal-700"><Trophy size={17} /></div><div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-800">{quiz.quiz_title}</p><p className="mt-1 flex items-center gap-1 text-xs text-slate-400"><CalendarDays size={12} /> {formatDate(quiz.timestamp)}</p></div></div><span className="shrink-0 text-lg font-bold text-teal-700">{quiz.score ?? "-"}</span></div>)}</div> : <p className="px-5 py-8 text-center text-sm text-slate-500">No quiz submissions have been recorded yet.</p>}</div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-slate-500">Student profile</p>
+                <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">{results.student.name}</h2>
+                <p className="mt-2 text-sm text-slate-500">{results.student.student_id}{results.student.city ? ` · ${results.student.city}` : ""}</p>
+              </div>
+              <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-emerald-800"><UserRound size={22} /></div>
+            </div>
+            <div className="mt-6 grid grid-cols-2 gap-4 border-t border-slate-100 pt-5 sm:grid-cols-3">
+              <Stat label="Registered number" value={results.student.phone ?? "Not available"} />
+              <Stat label="Quizzes completed" value={String(results.total_quizzes)} />
+              <Stat label="Average score" value={`${results.average_score}%`} />
+            </div>
+          </div>
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-100 px-5 py-4">
+              <h2 className="font-semibold text-slate-900">Quiz progress</h2>
+              <p className="mt-1 text-sm text-slate-500">Your latest quizzes appear first.</p>
+            </div>
+            {results.quizzes.length ? (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[620px] text-left">
+                  <thead>
+                    <tr className="border-b border-slate-100 bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      <th className="px-5 py-3">Quiz no.</th>
+                      <th className="px-4 py-3">Quiz link / marks</th>
+                      <th className="px-5 py-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {results.quizzes.map((quiz) => {
+                      const completed = quiz.timestamp !== null;
+                      return (
+                        <tr key={quiz.quiz_id} className="hover:bg-slate-50/70">
+                          <td className="px-5 py-4">
+                            <p className="text-sm font-semibold text-slate-900">Quiz {quiz.quiz_id}</p>
+                            <p className="mt-1 max-w-[230px] truncate text-xs text-slate-500" title={quiz.quiz_title}>{quiz.quiz_title}</p>
+                          </td>
+                          <td className="px-4 py-4 text-sm">
+                            {completed ? (
+                              <span className="font-semibold tabular-nums text-slate-800">
+                                {quiz.score ?? "Score unavailable"}{quiz.score !== null && quiz.max_marks !== null ? ` / ${quiz.max_marks}` : ""}
+                              </span>
+                            ) : quiz.quiz_url ? (
+                              <a href={quiz.quiz_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 font-semibold text-emerald-800 hover:underline">
+                                Open quiz <ExternalLink size={14} />
+                              </a>
+                            ) : <span className="text-slate-400">Link unavailable</span>}
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${completed ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>
+                              {completed ? <Check size={13} /> : <Clock3 size={13} />}
+                              {completed ? "Completed" : "Pending"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : <p className="px-5 py-8 text-center text-sm text-slate-500">No active quizzes are available right now.</p>}
+          </div>
         </section>}
       </div>
     </main>
@@ -114,5 +178,5 @@ export default function StudentPage() {
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
-  return <div className="min-w-0"><p className="truncate text-[11px] uppercase tracking-wide text-slate-500">{label}</p><p className="mt-1 truncate text-sm font-semibold text-slate-100">{value}</p></div>;
+  return <div className="min-w-0"><p className="truncate text-[11px] font-medium uppercase tracking-wide text-slate-500">{label}</p><p className="mt-1 truncate text-sm font-semibold text-slate-900">{value}</p></div>;
 }

@@ -13,12 +13,7 @@ type Submission = {
   quiz_id: string;
   timestamp: string;
   score: number | null;
-  quizzes: { title: string } | { title: string }[] | null;
 };
-
-function relationValue<T>(relation: T | T[] | null): T | null {
-  return Array.isArray(relation) ? relation[0] ?? null : relation;
-}
 
 export async function POST(request: Request) {
   let body: { query?: string };
@@ -87,12 +82,12 @@ export async function POST(request: Request) {
     const [matchedStudentSubmissions, phoneSubmissions] = await Promise.all([
       supabase
         .from("submissions")
-        .select("quiz_id, timestamp, score, quizzes(title)")
+        .select("quiz_id, timestamp, score")
         .eq("matched_student_id", student.student_id),
       student.normalized_phone
         ? supabase
             .from("submissions")
-            .select("quiz_id, timestamp, score, quizzes(title)")
+            .select("quiz_id, timestamp, score")
             .eq("normalized_phone", student.normalized_phone)
         : Promise.resolve({ data: [], error: null }),
     ]);
@@ -115,12 +110,12 @@ export async function POST(request: Request) {
       normalizedQuery
         ? supabase
             .from("submissions")
-            .select("quiz_id, timestamp, score, typed_name, phone, normalized_phone, quizzes(title)")
+            .select("quiz_id, timestamp, score, typed_name, phone, normalized_phone")
             .eq("normalized_phone", normalizedQuery)
         : Promise.resolve({ data: [], error: null }),
       supabase
         .from("submissions")
-        .select("quiz_id, timestamp, score, typed_name, phone, normalized_phone, quizzes(title)")
+        .select("quiz_id, timestamp, score, typed_name, phone, normalized_phone")
         .ilike("typed_name", `%${query}%`),
     ]);
 
@@ -157,8 +152,48 @@ export async function POST(request: Request) {
     return Response.json({ error: "No student or quiz results found" }, { status: 404 });
   }
 
-  const scores = submissions.map((submission) => submission.score).filter((score): score is number => score !== null);
-  const totalScore = scores.reduce((sum, score) => sum + score, 0);
+  const { data: activeQuizzes, error: quizzesError } = await supabase
+    .from("quizzes")
+    .select("id, title, quiz_url, max_marks")
+    .eq("status", "active");
+
+  if (quizzesError) {
+    return Response.json({ error: quizzesError.message }, { status: 500 });
+  }
+
+  const quizById = new Map((activeQuizzes ?? []).map((quiz) => [String(quiz.id), quiz]));
+  const submissionByQuiz = new Map<string, Submission>();
+  for (const submission of submissions) {
+    const quizId = String(submission.quiz_id);
+    if (!quizById.has(quizId)) continue;
+    const existing = submissionByQuiz.get(quizId);
+    if (!existing || new Date(submission.timestamp) > new Date(existing.timestamp)) {
+      submissionByQuiz.set(quizId, submission);
+    }
+  }
+
+  const quizResults = [...(activeQuizzes ?? [])]
+    .map((quiz) => {
+      const matchedSubmission = submissionByQuiz.get(String(quiz.id));
+      return {
+        quiz_id: String(quiz.id),
+        quiz_title: quiz.title,
+        quiz_url: quiz.quiz_url,
+        max_marks: quiz.max_marks === null ? null : Number(quiz.max_marks),
+        score: matchedSubmission?.score ?? null,
+        timestamp: matchedSubmission?.timestamp ?? null,
+      };
+    })
+    .sort((left, right) => right.quiz_id.localeCompare(left.quiz_id, undefined, { numeric: true }));
+  const completedResults = quizResults.filter((quiz) => quiz.timestamp !== null);
+  const percentageScores = completedResults.flatMap((quiz) =>
+    quiz.score !== null && quiz.max_marks && quiz.max_marks > 0
+      ? [(quiz.score / quiz.max_marks) * 100]
+      : [],
+  );
+  const averagePercentage = percentageScores.length
+    ? Math.round((percentageScores.reduce((sum, score) => sum + score, 0) / percentageScores.length) * 10) / 10
+    : 0;
 
   return Response.json({
     student: {
@@ -167,16 +202,8 @@ export async function POST(request: Request) {
       phone: studentDetails.phone,
       city: studentDetails.city,
     },
-    total_quizzes: submissions.length,
-    total_score: totalScore,
-    average_score: scores.length ? Math.round((totalScore / scores.length) * 100) / 100 : 0,
-    quizzes: submissions
-      .sort((left, right) => String(left.quiz_id).localeCompare(String(right.quiz_id), undefined, { numeric: true }))
-      .map((submission) => ({
-        quiz_id: submission.quiz_id,
-        quiz_title: relationValue(submission.quizzes)?.title ?? `Quiz ${submission.quiz_id}`,
-        score: submission.score,
-        timestamp: submission.timestamp,
-      })),
+    total_quizzes: completedResults.length,
+    average_score: averagePercentage,
+    quizzes: quizResults,
   });
 }

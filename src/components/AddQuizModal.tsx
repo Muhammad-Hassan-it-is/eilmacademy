@@ -7,10 +7,12 @@ import { useRouter } from "next/navigation";
 interface FormValues {
   id: string;
   title: string;
+  maxMarks: string;
+  quizUrl: string;
   sheetUrl: string;
 }
 
-const initialForm: FormValues = { id: "", title: "", sheetUrl: "" };
+const initialForm: FormValues = { id: "", title: "", maxMarks: "", quizUrl: "", sheetUrl: "" };
 
 export default function AddQuizModal() {
   const router = useRouter();
@@ -49,7 +51,7 @@ export default function AddQuizModal() {
       const response = await fetch("/api/admin/quizzes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, maxMarks: Number(form.maxMarks) }),
       });
       const result = await response.json();
 
@@ -88,6 +90,8 @@ export default function AddQuizModal() {
               {feedback && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-700">{feedback}</div>}
               <label className="block text-sm font-semibold text-slate-700">Quiz number / ID<input required type="number" min="1" step="1" value={form.id} onChange={(event) => updateField("id", event.target.value)} placeholder="49" className="mt-1.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-100" /></label>
               <label className="block text-sm font-semibold text-slate-700">Quiz title<input required type="text" value={form.title} onChange={(event) => updateField("title", event.target.value)} placeholder="Quiz 49: Surah Al-Baqarah" className="mt-1.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-100" /></label>
+              <label className="block text-sm font-semibold text-slate-700">Total marks<input required type="number" min="0.01" step="any" value={form.maxMarks} onChange={(event) => updateField("maxMarks", event.target.value)} placeholder="20" className="mt-1.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-100" /></label>
+              <label className="block text-sm font-semibold text-slate-700">Student quiz link<input required type="url" value={form.quizUrl} onChange={(event) => updateField("quizUrl", event.target.value)} placeholder="https://forms.gle/..." className="mt-1.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-100" /></label>
               <label className="block text-sm font-semibold text-slate-700">Google Sheet full URL<input required type="url" value={form.sheetUrl} onChange={(event) => updateField("sheetUrl", event.target.value)} placeholder="https://docs.google.com/spreadsheets/d/..." className="mt-1.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-100" /></label>
               <div className="flex justify-end gap-2 border-t border-slate-100 pt-4"><button type="button" onClick={closeModal} disabled={isSubmitting} className="rounded-lg border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50">Cancel</button><button type="submit" disabled={isSubmitting} className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Adding Quiz..." : "Add Quiz"}</button></div>
             </form>

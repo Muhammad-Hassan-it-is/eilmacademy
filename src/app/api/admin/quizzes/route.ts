@@ -5,6 +5,8 @@ import { supabase } from "@/lib/supabase";
 const createSchema = z.object({
   id: z.union([z.string().trim().regex(/^[1-9]\d*$/), z.number().int().positive()]),
   title: z.string().trim().min(1).max(200),
+  maxMarks: z.number().finite().positive(),
+  quizUrl: z.string().url(),
   sheetUrl: z.string().url(),
 });
 
@@ -18,7 +20,7 @@ export async function POST(request: Request) {
 
   const parsed = createSchema.safeParse(payload);
   if (!parsed.success) {
-    return Response.json({ success: false, error: "Quiz ID, title, and a valid Google Sheet URL are required" }, { status: 400 });
+    return Response.json({ success: false, error: "Quiz ID, title, total marks, quiz link, and a valid Google Sheet URL are required" }, { status: 400 });
   }
 
   const sheetUrl = new URL(parsed.data.sheetUrl);
@@ -42,9 +44,11 @@ export async function POST(request: Request) {
       title: parsed.data.title,
       spreadsheet_id: spreadsheetMatch[1],
       tab_gid: tabGid,
+      max_marks: parsed.data.maxMarks,
+      quiz_url: parsed.data.quizUrl,
       status: "active",
     })
-    .select("id, title, spreadsheet_id, tab_gid, status")
+    .select("id, title, spreadsheet_id, tab_gid, quiz_url, max_marks, status")
     .single();
 
   if (error) {

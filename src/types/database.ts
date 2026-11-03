@@ -30,6 +30,8 @@ export interface Quiz {
   title: string;
   spreadsheet_id: string;
   tab_gid: number;
+  quiz_url: string | null;
+  max_marks: number | null;
   enabled: boolean;
   last_synced_row: number;
   last_synced_at: string | null;

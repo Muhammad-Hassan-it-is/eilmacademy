@@ -17,6 +17,7 @@ export interface AdminQuiz {
   title: string;
   spreadsheet_id: string;
   tab_gid: number;
+  maxMarks: number | null;
   status: string;
   submissions: number;
 }
@@ -107,7 +108,7 @@ export default function AdminAnalytics({ initialData }: { initialData: Analytics
         <article className="rounded-xl border border-slate-200 bg-white">
           <div className="border-b border-slate-100 px-5 py-4">
             <h2 className="text-sm font-semibold text-slate-900">Participation &amp; Average Score Trend</h2>
-            <p className="mt-1 text-xs text-slate-500">Submissions and average score (/10 or /20) by quiz</p>
+            <p className="mt-1 text-xs text-slate-500">Submissions and average score as a percentage of quiz marks</p>
           </div>
           <div className="h-[310px] p-3">
             {data.trend.length ? (
@@ -116,10 +117,10 @@ export default function AdminAnalytics({ initialData }: { initialData: Analytics
                   <CartesianGrid stroke="#e8eeea" vertical={false} />
                   <XAxis dataKey="quiz" tick={{ fontSize: 10, fill: "#64748b" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
                   <YAxis yAxisId="participants" tick={{ fontSize: 10, fill: "#64748b" }} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <YAxis yAxisId="score" orientation="right" domain={[0, 20]} tick={{ fontSize: 10, fill: "#64748b" }} tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={{ border: "1px solid #dbe4de", borderRadius: 8, fontSize: 12 }} />
+                  <YAxis yAxisId="score" orientation="right" domain={[0, 100]} tickFormatter={(value: number) => `${value}%`} tick={{ fontSize: 10, fill: "#64748b" }} tickLine={false} axisLine={false} />
+                  <Tooltip formatter={(value) => [`${Number(value).toFixed(1)}%`, "Average score"]} contentStyle={{ border: "1px solid #dbe4de", borderRadius: 8, fontSize: 12 }} />
                   <Bar yAxisId="participants" dataKey="participants" name="Submissions" fill="#047857" radius={[4, 4, 0, 0]} maxBarSize={28} />
-                  <Line yAxisId="score" type="monotone" dataKey="averageScore" name="Average score" stroke="#c2410c" strokeWidth={2} dot={{ r: 2, fill: "#c2410c" }} connectNulls />
+                  <Line yAxisId="score" type="monotone" dataKey="averageScore" name="Average score (%)" stroke="#c2410c" strokeWidth={2} dot={{ r: 2, fill: "#c2410c" }} connectNulls />
                 </ComposedChart>
               </ResponsiveContainer>
             ) : <p className="grid h-full place-items-center text-sm text-slate-500">No quiz data available yet.</p>}

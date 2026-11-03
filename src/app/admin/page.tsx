@@ -32,7 +32,7 @@ function getInternationalPrefix(phone: string) {
 
 async function AdminDashboardData() {
   const [quizResult, totalResult, matchedResult, pendingResult, submissions] = await Promise.all([
-    supabase.from("quizzes").select("id, title, spreadsheet_id, tab_gid, status").order("id"),
+    supabase.from("quizzes").select("id, title, spreadsheet_id, tab_gid, status, max_marks").order("id"),
     supabase.from("submissions").select("id", { count: "exact", head: true }),
     supabase.from("submissions").select("id", { count: "exact", head: true }).eq("match_status", "matched"),
     supabase.from("submissions").select("id", { count: "exact", head: true }).eq("match_status", "pending_review"),
@@ -45,23 +45,24 @@ async function AdminDashboardData() {
   const quizzes: AdminQuiz[] = (quizResult.data ?? []).map((quiz) => ({
     ...quiz,
     status: quiz.status ?? "inactive",
+    maxMarks: quiz.max_marks === null ? null : Number(quiz.max_marks),
     submissions: 0,
   }));
   const quizById = new Map(quizzes.map((quiz) => [String(quiz.id), quiz]));
-  const trendByQuiz = new Map<string, { count: number; scoreTotal: number; scoreCount: number }>();
+  const trendByQuiz = new Map<string, { count: number; percentageTotal: number; percentageCount: number }>();
   const regions = { pakistan: 0, international: 0 };
 
   for (const submission of submissions) {
     const quizId = String(submission.quiz_id);
-    const aggregate = trendByQuiz.get(quizId) ?? { count: 0, scoreTotal: 0, scoreCount: 0 };
+    const aggregate = trendByQuiz.get(quizId) ?? { count: 0, percentageTotal: 0, percentageCount: 0 };
     aggregate.count += 1;
-    if (typeof submission.score === "number") {
-      aggregate.scoreTotal += submission.score;
-      aggregate.scoreCount += 1;
+    const quiz = quizById.get(quizId);
+    if (typeof submission.score === "number" && quiz?.maxMarks && quiz.maxMarks > 0) {
+      aggregate.percentageTotal += (submission.score / quiz.maxMarks) * 100;
+      aggregate.percentageCount += 1;
     }
     trendByQuiz.set(quizId, aggregate);
 
-    const quiz = quizById.get(quizId);
     if (quiz) quiz.submissions += 1;
 
     const phone = submission.normalized_phone ?? submission.phone;
@@ -86,8 +87,8 @@ async function AdminDashboardData() {
         return {
           quiz: `Quiz ${quiz.id}`,
           participants: aggregate?.count ?? 0,
-          averageScore: aggregate && aggregate.scoreCount
-            ? Math.round((aggregate.scoreTotal / aggregate.scoreCount) * 100) / 100
+          averageScore: aggregate && aggregate.percentageCount
+            ? Math.round((aggregate.percentageTotal / aggregate.percentageCount) * 100) / 100
             : null,
         };
       }),
