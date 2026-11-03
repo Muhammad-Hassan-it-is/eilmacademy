@@ -2,10 +2,7 @@
 
 import { Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
-
-interface AddQuizModalProps {
-  onSuccess: () => void | Promise<void>;
-}
+import { useRouter } from "next/navigation";
 
 interface FormValues {
   id: string;
@@ -15,11 +12,13 @@ interface FormValues {
 
 const initialForm: FormValues = { id: "", title: "", sheetUrl: "" };
 
-export default function AddQuizModal({ onSuccess }: AddQuizModalProps) {
+export default function AddQuizModal() {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [form, setForm] = useState<FormValues>(initialForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [toast, setToast] = useState("");
 
   useEffect(() => {
     if (!isOpen) return;
@@ -47,7 +46,7 @@ export default function AddQuizModal({ onSuccess }: AddQuizModalProps) {
     setFeedback(null);
 
     try {
-      const response = await fetch("/api/quizzes/add", {
+      const response = await fetch("/api/admin/quizzes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
@@ -59,10 +58,12 @@ export default function AddQuizModal({ onSuccess }: AddQuizModalProps) {
       }
 
       setForm(initialForm);
-      setFeedback({ type: "success", message: result.message ?? "Quiz added successfully" });
-      await onSuccess();
+      setIsOpen(false);
+      setToast(result.message ?? "Quiz added successfully");
+      window.setTimeout(() => setToast(""), 4000);
+      router.refresh();
     } catch (submitError) {
-      setFeedback({ type: "error", message: submitError instanceof Error ? submitError.message : "Quiz could not be added" });
+      setFeedback(submitError instanceof Error ? submitError.message : "Quiz could not be added");
     } finally {
       setIsSubmitting(false);
     }
@@ -84,7 +85,7 @@ export default function AddQuizModal({ onSuccess }: AddQuizModalProps) {
             </div>
 
             <form onSubmit={submitQuiz} className="space-y-4 p-5">
-              {feedback && <div role="alert" className={`rounded-lg border px-3 py-2.5 text-sm ${feedback.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"}`}>{feedback.message}</div>}
+              {feedback && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-700">{feedback}</div>}
               <label className="block text-sm font-semibold text-slate-700">Quiz number / ID<input required type="number" min="1" step="1" value={form.id} onChange={(event) => updateField("id", event.target.value)} placeholder="49" className="mt-1.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-100" /></label>
               <label className="block text-sm font-semibold text-slate-700">Quiz title<input required type="text" value={form.title} onChange={(event) => updateField("title", event.target.value)} placeholder="Quiz 49: Surah Al-Baqarah" className="mt-1.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-100" /></label>
               <label className="block text-sm font-semibold text-slate-700">Google Sheet full URL<input required type="url" value={form.sheetUrl} onChange={(event) => updateField("sheetUrl", event.target.value)} placeholder="https://docs.google.com/spreadsheets/d/..." className="mt-1.5 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-100" /></label>
@@ -93,6 +94,7 @@ export default function AddQuizModal({ onSuccess }: AddQuizModalProps) {
           </section>
         </div>
       )}
+      {toast && <div role="status" className="fixed right-5 top-16 z-[60] rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 shadow-lg">{toast}</div>}
     </>
   );
 }

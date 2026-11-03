@@ -1,30 +1,65 @@
+import { after } from "next/server";
 import { z } from "zod";
 import { supabase } from "@/lib/supabase";
 
-const updateSchema = z.object({ id: z.union([z.string(), z.number()]), status: z.enum(["active", "inactive"]) });
+const createSchema = z.object({
+  id: z.union([z.string().trim().regex(/^[1-9]\d*$/), z.number().int().positive()]),
+  title: z.string().trim().min(1).max(200),
+  sheetUrl: z.string().url(),
+});
 
-export async function GET() {
-  const [quizzes, submissions] = await Promise.all([
-    supabase.from("quizzes").select("id, title, status, last_synced_at").order("id"),
-    supabase.from("submissions").select("quiz_id"),
-  ]);
-  const error = quizzes.error ?? submissions.error;
-  if (error) return Response.json({ error: error.message }, { status: 500 });
-  const counts = new Map<string, number>();
-  for (const submission of submissions.data ?? []) {
-    const key = String(submission.quiz_id);
-    counts.set(key, (counts.get(key) ?? 0) + 1);
-  }
-  return Response.json({ items: (quizzes.data ?? []).map((quiz) => ({ ...quiz, submissions: counts.get(String(quiz.id)) ?? 0 })) });
-}
-
-export async function PATCH(request: Request) {
+export async function POST(request: Request) {
   let payload: unknown;
-  try { payload = await request.json(); } catch { return Response.json({ error: "Invalid JSON body" }, { status: 400 }); }
-  const parsed = updateSchema.safeParse(payload);
-  if (!parsed.success) return Response.json({ error: "Expected quiz id and active/inactive status" }, { status: 400 });
-  const { data, error } = await supabase.from("quizzes").update({ status: parsed.data.status }).eq("id", parsed.data.id).select("id, status").maybeSingle();
-  if (error) return Response.json({ error: error.message }, { status: 500 });
-  if (!data) return Response.json({ error: "Quiz not found" }, { status: 404 });
-  return Response.json({ item: data });
+  try {
+    payload = await request.json();
+  } catch {
+    return Response.json({ success: false, error: "Request body must be valid JSON" }, { status: 400 });
+  }
+
+  const parsed = createSchema.safeParse(payload);
+  if (!parsed.success) {
+    return Response.json({ success: false, error: "Quiz ID, title, and a valid Google Sheet URL are required" }, { status: 400 });
+  }
+
+  const sheetUrl = new URL(parsed.data.sheetUrl);
+  const spreadsheetMatch = sheetUrl.hostname === "docs.google.com"
+    ? sheetUrl.pathname.match(/^\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)
+    : null;
+  const gid = sheetUrl.searchParams.get("gid")
+    ?? new URLSearchParams(sheetUrl.hash.replace(/^#/, "")).get("gid")
+    ?? "0";
+  const tabGid = Number(gid);
+
+  if (!spreadsheetMatch?.[1] || !/^\d+$/.test(gid) || !Number.isSafeInteger(tabGid) || tabGid < 0) {
+    return Response.json({ success: false, error: "Enter a valid Google Sheets URL with a valid tab ID" }, { status: 400 });
+  }
+
+  const id = String(parsed.data.id);
+  const { data: quiz, error } = await supabase
+    .from("quizzes")
+    .insert({
+      id,
+      title: parsed.data.title,
+      spreadsheet_id: spreadsheetMatch[1],
+      tab_gid: tabGid,
+      status: "active",
+    })
+    .select("id, title, spreadsheet_id, tab_gid, status")
+    .single();
+
+  if (error) {
+    const status = error.code === "23505" ? 409 : 500;
+    return Response.json({ success: false, error: `Quiz could not be saved: ${error.message}` }, { status });
+  }
+
+  after(async () => {
+    try {
+      const { error: matchError } = await supabase.rpc("auto_match_all_submissions");
+      if (matchError) console.error("Background submission matching failed:", matchError);
+    } catch (matchError) {
+      console.error("Background submission matching failed:", matchError);
+    }
+  });
+
+  return Response.json({ success: true, message: "Quiz added successfully", quiz }, { status: 201 });
 }
