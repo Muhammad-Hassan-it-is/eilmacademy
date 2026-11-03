@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import AdminAnalytics, { type AdminQuiz, type AnalyticsData, type AnalyticsSubmission } from "@/components/admin/AdminAnalytics";
 import { supabase } from "@/lib/supabase";
 
@@ -29,7 +30,7 @@ function getInternationalPrefix(phone: string) {
   return `+${digits}`;
 }
 
-export default async function AdminPage() {
+async function AdminDashboardData() {
   const [quizResult, totalResult, matchedResult, pendingResult, submissions] = await Promise.all([
     supabase.from("quizzes").select("id, title, spreadsheet_id, tab_gid, status").order("id"),
     supabase.from("submissions").select("id", { count: "exact", head: true }),
@@ -95,4 +96,27 @@ export default async function AdminPage() {
 
   const dashboardKey = analytics.quizzes.map((quiz) => `${quiz.id}:${quiz.status}`).join(",");
   return <AdminAnalytics key={dashboardKey} initialData={analytics} />;
+}
+
+export default function AdminPage() {
+  return (
+    <Suspense fallback={
+      <main className="mx-auto min-h-[calc(100vh-3.5rem)] max-w-[1440px] px-5 py-7 sm:px-8 lg:px-10">
+        <div className="mb-7 space-y-2">
+          <div className="h-3 w-28 animate-pulse rounded bg-slate-200" />
+          <div className="h-8 w-56 animate-pulse rounded bg-slate-200" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }, (_, index) => <div key={index} className="h-28 animate-pulse rounded-xl border border-slate-200 bg-white" />)}
+        </div>
+        <div className="mt-7 grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(280px,0.8fr)]">
+          <div className="h-[370px] animate-pulse rounded-xl border border-slate-200 bg-white" />
+          <div className="h-[370px] animate-pulse rounded-xl border border-slate-200 bg-white" />
+        </div>
+        <div className="mt-7 h-64 animate-pulse rounded-xl border border-slate-200 bg-white" />
+      </main>
+    }>
+      <AdminDashboardData />
+    </Suspense>
+  );
 }
