@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { supabase } from "@/lib/supabase";
 
 const updateSchema = z.object({ status: z.enum(["active", "inactive"]) });
@@ -7,6 +8,10 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  if (!(await isAdminAuthenticated())) {
+    return Response.json({ error: "Admin authentication required" }, { status: 401 });
+  }
+
   let payload: unknown;
   try {
     payload = await request.json();

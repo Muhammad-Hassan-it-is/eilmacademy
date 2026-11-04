@@ -1,5 +1,6 @@
 import { after } from "next/server";
 import { z } from "zod";
+import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { supabase } from "@/lib/supabase";
 
 const createSchema = z.object({
@@ -11,6 +12,10 @@ const createSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  if (!(await isAdminAuthenticated())) {
+    return Response.json({ success: false, error: "Admin authentication required" }, { status: 401 });
+  }
+
   let payload: unknown;
   try {
     payload = await request.json();

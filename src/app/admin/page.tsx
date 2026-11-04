@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import AdminAnalytics, { type AdminQuiz, type AnalyticsData, type AnalyticsSubmission } from "@/components/admin/AdminAnalytics";
+import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { supabase } from "@/lib/supabase";
 
 async function loadSubmissions() {
@@ -31,6 +32,8 @@ function getInternationalPrefix(phone: string) {
 }
 
 async function AdminDashboardData() {
+  if (!(await isAdminAuthenticated())) return null;
+
   const [quizResult, totalResult, matchedResult, pendingResult, submissions] = await Promise.all([
     supabase.from("quizzes").select("id, title, spreadsheet_id, tab_gid, status, max_marks").order("id"),
     supabase.from("submissions").select("id", { count: "exact", head: true }),

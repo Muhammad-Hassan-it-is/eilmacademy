@@ -128,13 +128,13 @@ export default function StudentPage() {
               <p className="mt-1 text-sm text-slate-500">Your latest quizzes appear first.</p>
             </div>
             {results.quizzes.length ? (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[620px] text-left">
+              <div>
+                <table className="w-full table-fixed text-left">
                   <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                      <th className="px-5 py-3">Quiz no.</th>
-                      <th className="px-4 py-3">Quiz link / marks</th>
-                      <th className="px-5 py-3">Status</th>
+                    <tr className="border-b border-slate-100 bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-[11px]">
+                      <th className="w-[28%] px-2 py-3 sm:px-5">Quiz no.</th>
+                      <th className="w-[40%] px-2 py-3 sm:px-4">Quiz link / marks</th>
+                      <th className="w-[32%] px-2 py-3 sm:px-5">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -142,24 +142,23 @@ export default function StudentPage() {
                       const completed = quiz.timestamp !== null;
                       return (
                         <tr key={quiz.quiz_id} className="hover:bg-slate-50/70">
-                          <td className="px-5 py-4">
-                            <p className="text-sm font-semibold text-slate-900">Quiz {quiz.quiz_id}</p>
-                            <p className="mt-1 max-w-[230px] truncate text-xs text-slate-500" title={quiz.quiz_title}>{quiz.quiz_title}</p>
+                          <td className="px-2 py-4 sm:px-5">
+                            <p className="text-xs font-semibold text-slate-900 sm:text-sm">Quiz {quiz.quiz_id}</p>
                           </td>
-                          <td className="px-4 py-4 text-sm">
+                          <td className="break-words px-2 py-4 text-xs sm:px-4 sm:text-sm">
                             {completed ? (
                               <span className="font-semibold tabular-nums text-slate-800">
                                 {quiz.score ?? "Score unavailable"}{quiz.score !== null && quiz.max_marks !== null ? ` / ${quiz.max_marks}` : ""}
                               </span>
                             ) : quiz.quiz_url ? (
-                              <a href={quiz.quiz_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 font-semibold text-emerald-800 hover:underline">
+                              <a href={quiz.quiz_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-emerald-800 hover:underline sm:gap-1.5">
                                 Open quiz <ExternalLink size={14} />
                               </a>
                             ) : <span className="text-slate-400">Link unavailable</span>}
                           </td>
-                          <td className="px-5 py-4">
-                            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${completed ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>
-                              {completed ? <Check size={13} /> : <Clock3 size={13} />}
+                          <td className="px-2 py-4 sm:px-5">
+                            <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-1.5 py-1 text-[10px] font-semibold sm:gap-1.5 sm:px-2.5 sm:text-xs ${completed ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>
+                              {completed ? <Check aria-hidden="true" className="hidden sm:block" size={12} /> : <Clock3 aria-hidden="true" className="hidden sm:block" size={12} />}
                               {completed ? "Completed" : "Pending"}
                             </span>
                           </td>
