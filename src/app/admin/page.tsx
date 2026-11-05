@@ -1,7 +1,16 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import AdminAnalytics, { type AdminQuiz, type AnalyticsData, type AnalyticsSubmission } from "@/components/admin/AdminAnalytics";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { supabase } from "@/lib/supabase";
+
+export const metadata: Metadata = {
+  title: "Admin | Eilm Academy",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 async function loadSubmissions() {
   const submissions: AnalyticsSubmission[] = [];

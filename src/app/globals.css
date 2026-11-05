@@ -48,3 +48,29 @@ html {
 .eyebrow {
   letter-spacing: 0.16em;
 }
+
+.student-portal-sweep {
+  position: absolute;
+  inset: auto auto 0 0;
+  width: 35%;
+  height: 2px;
+  background: #9a752c;
+  animation: student-portal-sweep 2.4s ease-in-out infinite;
+}
+
+@keyframes student-portal-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(300%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .student-portal-sweep {
+    animation: none;
+    transform: translateX(93%);
+  }
+}
